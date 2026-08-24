@@ -359,7 +359,7 @@
 
 (defun %parse-object (schema source &key coerce extra)
     (let* ((class (schema-of schema))
-         (policy (%class-option (or extra (schema-class-extra class))))
+         (policy (%class-option (or extra (schema-extra-policy class))))
          (table (table-from-source source))
          (consumed (make-hash-table :test #'equal))
          (initargs '())
@@ -379,8 +379,10 @@
         (let* ((name (slot-definition-name slot))
                (path (list (slot-wire-key slot class))))
           (multiple-value-bind (raw found key) (lookup-field slot table class)
-            (when key
-              (setf (gethash key consumed) t))
+            (declare (ignore key))
+            (dolist (k (field-lookup-keys slot class))
+              (when (nth-value 1 (gethash k table))
+                (setf (gethash k consumed) t)))
             (restart-case
                 (cond
                   ((not found)
@@ -413,7 +415,7 @@
                    (:allow (setf (gethash k extras) v)))))
              table)
     (let ((obj (apply #'make-instance class initargs)))
-      (when (and (eq policy :allow) (plusp (hash-table-count extras)))
+      (when (eq policy :allow)
         (setf (schema-extras obj) extras))
       (validate-object obj)
       obj)))
@@ -526,12 +528,13 @@
         (when (fboundp cname)
           (setf (gethash (compute-field-key cname class) out)
                 (dump-value (funcall cname object))))))
-    (when (and (eq (%class-option (schema-class-extra class)) :allow)
-               (schema-extras object))
-      (maphash (lambda (k v)
-                 (unless (nth-value 1 (gethash k out))
-                   (setf (gethash k out) v)))
-               (schema-extras object)))
+    (when (eq (schema-extra-policy class) :allow)
+      (let ((bag (schema-extras object)))
+        (when bag
+          (maphash (lambda (k v)
+                     (unless (nth-value 1 (gethash k out))
+                       (setf (gethash k out) v)))
+                   bag))))
     (let ((shaped (ecase as
                     (:hash-table out)
                     (:plist

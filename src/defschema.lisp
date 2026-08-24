@@ -97,7 +97,7 @@ Slot forms: (name type &key required optional default initform initarg accessor
                            minimum maximum description dump wire)
 TYPE is a Lisp type specifier or nested schema class name.
 Options:
-  (:extra :forbid|:ignore|:allow)
+  (:extra :forbid|:ignore|:allow)  — inherited; leftover keys in SCHEMA-EXTRAS (:allow)
   (:key-style :downcase|:kebab|:snake|:camel|:preserve)
   (:tag slot-name &optional variant*) — discriminator; subclasses (or VARIANT*)
   (:compute name lambda-list . body)
