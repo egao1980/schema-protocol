@@ -7,9 +7,15 @@ on:
         description: "OCI tag (default: .asd :version)"
         required: false
         default: ""
+      packager_version:
+        description: "cl-repository-packager OCI tag (default: latest anchor)"
+        required: false
+        default: "latest"
 
 env:
-  PACKAGER_TAG: "0.16.0"
+  SBCL_VERSION: 2.6.7
+  ROSWELL_VERSION: "26.02.116"
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   publish:
@@ -20,39 +26,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: oras-project/setup-oras@v2
+      - uses: egao1980/cl-repository/.github/actions/setup-client@main
+
+      - uses: egao1980/cl-repository/.github/actions/setup-roswell@main
         with:
-          version: 1.2.3
-
-      - name: Install SBCL + git
-        run: sudo apt-get update && sudo apt-get install -y sbcl git
-
-      - name: Install Quicklisp
-        run: |
-          curl -fsSL -o /tmp/quicklisp.lisp https://beta.quicklisp.org/quicklisp.lisp
-          sbcl --noinform --non-interactive \
-            --load /tmp/quicklisp.lisp \
-            --eval '(quicklisp-quickstart:install :path #p"~/quicklisp/")'
-          sbcl --noinform --non-interactive \
-            --load ~/quicklisp/setup.lisp \
-            --eval '(ql-util:without-prompting (ql:add-to-init-file))'
-
-      - name: Pull packager
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "${GITHUB_TOKEN}" | oras login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          rm -rf /tmp/cl-repo-pull
-          mkdir -p /tmp/cl-repo-pull ~/.local/share/cl-systems
-          oras pull "ghcr.io/egao1980/cl-repository/cl-repository-packager:${PACKAGER_TAG}" -o /tmp/cl-repo-pull/
-          for f in /tmp/cl-repo-pull/*.tar.gz; do
-            tar -xzf "$f" -C ~/.local/share/cl-systems/
-          done
+          sbcl-version: ${{ env.SBCL_VERSION }}
+          roswell-version: ${{ env.ROSWELL_VERSION }}
 
       - name: Publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
           PKG_SYSTEM: schema-protocol
           PKG_VERSION: ${{ inputs.version }}
-        run: sbcl --noinform --non-interactive --load scripts/publish-checkout.lisp
+          PACKAGER_VERSION: ${{ inputs.packager_version }}
+        run: ros -l scripts/publish-checkout.lisp -q
