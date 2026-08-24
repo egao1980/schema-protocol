@@ -1,10 +1,12 @@
 # schema-protocol
 
-CLOS **interchange schema** protocol for [cl-stack](https://github.com/egao1980/cl-stack) — models, validation, nested schemas, computed fields, JSON Schema *emit*.
+CLOS **interchange schema** protocol for [cl-stack](https://github.com/egao1980/cl-stack) — models, validation, nested schemas, computed fields.
+
+JSON Schema parse/emit lives in [`schema-protocol-json`](https://github.com/egao1980/schema-protocol-json) (`stack-schema-json`). Same pattern later: `schema-protocol-xsd`, …
 
 | System | Role | OCI |
 |--------|------|-----|
-| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump + JSON Schema | **0.1.0** |
+| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.1.0** |
 
 Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-protocol) / [`json-protocol`](https://github.com/egao1980/json-protocol). This package owns **shape + constraints**, not bytes.
 
@@ -31,8 +33,7 @@ Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-proto
 (let ((u (stack-schema:parse 'user '(:name "Ada"
                                      :address (:city "London")
                                      :tags #("lisp" "clos")))))
-  (stack-schema:dump u)
-  (stack-schema:json-schema 'user))
+  (stack-schema:dump u))
 ```
 
 ## Prior art — take / leave
@@ -46,7 +47,7 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 | **sql-orm `defmodel`** | defclass-shaped `defschema`, `:compute` as methods | Tables / PK / relations |
 | **sanity-clause** | Metaclass + Lisp `:type`; load from alist | Parallel `integer-field` zoo; JSON-library coupling |
 | **json-mop / json-clos** | Slot metadata; extras bag | Hard yason; `:json-key` as the model |
-| **fisxoj/json-schema** | Draft-07 *export* shape | JSON Schema as authoring language |
+| **fisxoj/json-schema** | — | Validator for foreign docs. See `schema-protocol-json` |
 | **Pydantic** | Nested / computed / extra policy / `loc` paths | Implicit coercion default; `model_validate`; decorators; `model_config` |
 | **cl-stack-config** | Env/TOML settings | Typed interchange models (this package) |
 
@@ -63,7 +64,7 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defgeneric validate (schema value &key coerce extra format))
 (defgeneric parse (schema source &key coerce extra format))
 (defgeneric dump (object &key as include-computed format))
-(defgeneric json-schema (schema &key draft))
+(defgeneric json-schema (schema &key draft))   ; method in schema-protocol-json
 (defgeneric validate-object (object))          ; :after methods
 (defgeneric validate-field (schema-name slot-name value))
 (defgeneric coerce-field (schema-name slot-name value))
@@ -73,7 +74,7 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 
 ## Non-goals (0.1.0)
 
-- Importing JSON Schema → CLOS (emit only)
+- JSON Schema parse / generate (→ `schema-protocol-json`; later `schema-protocol-xsd`, …)
 - Discriminated unions
 - Settings/env overlay (stay on `cl-stack-config`)
 - ORM / persistence

@@ -15,6 +15,10 @@
 (defun %type-args (spec)
   (if (consp spec) (rest spec) nil))
 
+(defun type-args (spec)
+  "Components of a compound schema type specifier."
+  (%type-args spec))
+
 (defun nested-schema-type-p (spec)
   (let ((name (if (consp spec) nil spec)))
     (and (symbolp name) (schema-name-p name))))

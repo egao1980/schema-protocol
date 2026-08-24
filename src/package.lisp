@@ -30,6 +30,13 @@
    #:list-schemas
    #:schema-slots
    #:schema-slot
+   #:finalize-schema
+   #:type-kind
+   #:type-args
+   #:sequence-element-type
+   #:nested-schema-type-p
+   #:slot-is-required-p
+   #:style-key
    #:slot-required-p
    #:slot-optional-p
    #:slot-wire-p
