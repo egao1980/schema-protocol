@@ -25,6 +25,7 @@
    #:schema-object
    #:schema-class-p
    #:schema-class-extra
+   #:schema-extra-policy
    #:schema-class-key-style
    #:schema-class-computes
    #:schema-class-tag

@@ -36,13 +36,14 @@
    (wire :initarg :wire :initform t :accessor slot-wire-p)))
 
 (defclass schema-class (standard-class)
-  ((extra :initarg :extra :initform :forbid :accessor schema-class-extra)
+  ((extra :initarg :extra :initform nil :accessor schema-class-extra)
    (key-style :initarg :key-style :initform :downcase :accessor schema-class-key-style)
    (computes :initarg :computes :initform nil :accessor schema-class-computes)
    (tag :initarg :tag :initform nil :accessor schema-class-tag)
    (variants :initarg :variants :initform nil :accessor schema-class-variants))
   (:documentation "Metaclass for interchange schemas. Slot options carry wire metadata.
-   :TAG names the discriminator slot; subclasses (or :VARIANTS) are the union."))
+   :TAG names the discriminator slot; subclasses (or :VARIANTS) are the union.
+   :EXTRA is inherited; NIL means take the parent policy, else default :FORBID."))
 
 (defmethod validate-superclass ((class schema-class) (super standard-class))
   t)
@@ -133,9 +134,9 @@
     (setf (gethash name *schema-registry*) class)))
 
 (defclass schema-object ()
-  ((%extras :initform nil :accessor schema-extras :wire nil :dump nil :optional t))
+  ((%extras :initform nil :initarg :extras :wire nil :dump nil :optional t))
   (:metaclass schema-class)
-  (:documentation "Optional mixin. Internal extras bag for :extra :allow."))
+  (:documentation "Mixin. %EXTRAS is the leftover-field bag when :EXTRA :ALLOW."))
 
 (defun schema-class-p (object)
   (typep object 'schema-class))
@@ -175,6 +176,103 @@
         class
         (error 'schema-unknown :name (class-name class)
                                :message "instance is not a schema-class"))))
+
+(defun schema-extra-policy (schema)
+  "Resolved :EXTRA policy: :FORBID (default), :IGNORE, or :ALLOW.
+   Walks schema superclasses when the class did not set :EXTRA."
+  (labels ((walk (class)
+             (let ((raw (%class-option (schema-class-extra class))))
+               (if raw
+                   raw
+                   (loop for super in (class-direct-superclasses class)
+                         when (schema-class-p super)
+                           do (let ((p (walk super)))
+                                (when p (return p))))))))
+    (or (walk (schema-of schema)) :forbid)))
+
+(defun extras-table (value)
+  "Hash-table / alist / plist → equal hash-table with string keys. NIL → empty table."
+  (cond
+    ((null value)
+     (make-hash-table :test #'equal))
+    ((hash-table-p value)
+     (let ((out (make-hash-table :test #'equal)))
+       (maphash (lambda (k v) (setf (gethash (stringify-key k) out) v)) value)
+       out))
+    ((and (listp value) (consp (first value)))
+     (let ((out (make-hash-table :test #'equal)))
+       (dolist (pair value out)
+         (setf (gethash (stringify-key (car pair)) out) (cdr pair)))))
+    ((listp value)
+     (unless (evenp (length value))
+       (error 'schema-error :message "extras plist has odd length"))
+     (let ((out (make-hash-table :test #'equal)))
+       (loop for (k v) on value by #'cddr
+             do (setf (gethash (stringify-key k) out) v))
+       out))
+    (t
+     (error 'schema-error
+            :message (format nil "extras must be a hash-table, alist, or plist, got ~S"
+                             (type-of value))))))
+
+(defun extras-alist (table)
+  (let ((acc '()))
+    (maphash (lambda (k v) (push (cons k v) acc)) table)
+    (nreverse acc)))
+
+(defun schema-extras (object &key (as :hash-table))
+  "Leftover fields (Pydantic model_extra). :AS is :HASH-TABLE or :ALIST.
+   :ALLOW schemas lazily allocate an empty table. :FORBID/:IGNORE return NIL."
+  (unless (slot-exists-p object '%extras)
+    (return-from schema-extras nil))
+  (let ((raw (if (slot-boundp object '%extras)
+                 (slot-value object '%extras)
+                 nil)))
+    (when (and (null raw) (eq (schema-extra-policy object) :allow))
+      (setf raw (make-hash-table :test #'equal)
+            (slot-value object '%extras) raw))
+    (ecase as
+      (:hash-table raw)
+      (:alist (and raw (extras-alist raw))))))
+
+(defun (setf schema-extras) (new object)
+  (unless (slot-exists-p object '%extras)
+    (error 'schema-error :message "object has no extras bag"))
+  (setf (slot-value object '%extras)
+        (if (null new) nil (extras-table new))))
+
+(defun %known-initargs (class)
+  (let ((keys '(:extras :allow-other-keys)))
+    (dolist (slot (class-slots (finalize-schema class)) keys)
+      (dolist (ia (slot-definition-initargs slot))
+        (pushnew ia keys)))))
+
+(defmethod make-instance ((class schema-class) &rest initargs)
+  (finalize-schema class)
+  (let ((policy (schema-extra-policy class)))
+    (if (eq policy :forbid)
+        (apply #'call-next-method class initargs)
+        (let ((known (%known-initargs class))
+              (kept '())
+              (bag (make-hash-table :test #'equal))
+              (explicit nil)
+              (explicit-p nil))
+          (loop for (k v) on initargs by #'cddr
+                do (cond
+                     ((eq k :extras)
+                      (setf explicit v explicit-p t))
+                     ((eq k :allow-other-keys) nil)
+                     ((member k known)
+                      (setf kept (list* k v kept)))
+                     ((eq policy :allow)
+                      (setf (gethash (stringify-key k) bag) v))
+                     (t nil)))
+          (when (or explicit-p (plusp (hash-table-count bag)))
+            (let ((merged (extras-table (if explicit-p explicit nil))))
+              (maphash (lambda (k v) (setf (gethash k merged) v)) bag)
+              (when (eq policy :allow)
+                (setf kept (list* :extras merged kept)))))
+          (apply #'call-next-method class kept)))))
 
 (defun schema-slots (schema)
   (class-slots (finalize-schema (schema-of schema))))

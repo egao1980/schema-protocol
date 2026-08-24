@@ -76,6 +76,8 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 
 **Pattern** is a function designator, not a regex string.
 
+**Extras** (`:extra :allow`, inherited): leftover keys live in `schema-extras` as an equal hash-table (or `:as :alist`). Same bag is merged back on `dump`. `:ignore` drops them; `:forbid` (default) errors. `make-instance` leftover initargs go in the bag. Slot `:aliases` are consumed and never leak into extras.
+
 ## Protocol
 
 ```lisp
