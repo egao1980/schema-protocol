@@ -99,6 +99,7 @@ TYPE is a Lisp type specifier or nested schema class name.
 Options:
   (:extra :forbid|:ignore|:allow)
   (:key-style :downcase|:kebab|:snake|:camel|:preserve)
+  (:tag slot-name &optional variant*) — discriminator; subclasses (or VARIANT*)
   (:compute name lambda-list . body)
   (:validate (self) . body)           — VALIDATE-OBJECT :after
   (:validate-field slot (value) . body)"
@@ -107,6 +108,7 @@ Options:
     (let ((clos-slots (mapcar #'%expand-slot slots))
           (extra nil)
           (key-style nil)
+          (tag nil)
           (computes '())
           (compute-forms '())
           (validate-forms '())
@@ -115,6 +117,7 @@ Options:
         (ecase (first opt)
           (:extra (setf extra (second opt)))
           (:key-style (setf key-style (second opt)))
+          (:tag (setf tag (rest opt)))
           (:compute
            (destructuring-bind (cname lambda-list &body cbody) (rest opt)
              (push cname computes)
@@ -144,6 +147,7 @@ Options:
            (:metaclass schema-class)
            ,@(when extra `((:extra ,extra)))
            ,@(when key-style `((:key-style ,key-style)))
+           ,@(when tag `((:tag ,@tag)))
            ,@(when doc `((:documentation ,doc))))
          (setf (schema-class-computes (find-class ',name))
                ',(nreverse computes))

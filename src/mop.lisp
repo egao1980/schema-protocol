@@ -38,8 +38,11 @@
 (defclass schema-class (standard-class)
   ((extra :initarg :extra :initform :forbid :accessor schema-class-extra)
    (key-style :initarg :key-style :initform :downcase :accessor schema-class-key-style)
-   (computes :initarg :computes :initform nil :accessor schema-class-computes))
-  (:documentation "Metaclass for interchange schemas. Slot options carry wire metadata."))
+   (computes :initarg :computes :initform nil :accessor schema-class-computes)
+   (tag :initarg :tag :initform nil :accessor schema-class-tag)
+   (variants :initarg :variants :initform nil :accessor schema-class-variants))
+  (:documentation "Metaclass for interchange schemas. Slot options carry wire metadata.
+   :TAG names the discriminator slot; subclasses (or :VARIANTS) are the union."))
 
 (defmethod validate-superclass ((class schema-class) (super standard-class))
   t)
@@ -70,7 +73,12 @@
         (source (find-if (lambda (d) (typep d 'schema-direct-slot-definition))
                          direct-slots)))
     (when source
-      (%copy-slot-options source effective))
+      (%copy-slot-options source effective)
+      ;; Prefer the most specific direct type. CLOS intersection of
+      ;; KEYWORD with (EQL "circ") is empty — useless for tagged slots.
+      (let ((spec (slot-definition-type source)))
+        (when spec
+          (setf (slot-definition-type effective) spec))))
     effective))
 
 (defun finalize-schema (class)
@@ -84,19 +92,43 @@
       (first value)
       value))
 
-(defmethod initialize-instance :after ((class schema-class) &key name extra key-style &allow-other-keys)
+(defun %apply-tag-option (class value)
+  (let ((v value))
+    (when (and (consp v) (null (rest v)) (symbolp (first v)))
+      (setf v (first v)))
+    (cond
+      ((null v) nil)
+      ((symbolp v)
+       (setf (schema-class-tag class) v))
+      ((and (consp v) (symbolp (first v)))
+       (setf (schema-class-tag class) (first v))
+       (when (rest v)
+         (setf (schema-class-variants class) (rest v))))
+      (t
+       (error 'schema-error
+              :message (format nil "bad :tag option ~S" value))))))
+
+(defmethod initialize-instance :after ((class schema-class) &key name extra key-style tag variants &allow-other-keys)
   (when extra
     (setf (schema-class-extra class) (%class-option extra)))
   (when key-style
     (setf (schema-class-key-style class) (%class-option key-style)))
+  (when tag
+    (%apply-tag-option class tag))
+  (when variants
+    (setf (schema-class-variants class) (%class-option variants)))
   (when name
     (setf (gethash name *schema-registry*) class)))
 
-(defmethod reinitialize-instance :after ((class schema-class) &key name extra key-style &allow-other-keys)
+(defmethod reinitialize-instance :after ((class schema-class) &key name extra key-style tag variants &allow-other-keys)
   (when extra
     (setf (schema-class-extra class) (%class-option extra)))
   (when key-style
     (setf (schema-class-key-style class) (%class-option key-style)))
+  (when tag
+    (%apply-tag-option class tag))
+  (when variants
+    (setf (schema-class-variants class) (%class-option variants)))
   (when name
     (setf (gethash name *schema-registry*) class)))
 

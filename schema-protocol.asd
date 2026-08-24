@@ -9,6 +9,7 @@
   :components ((:file "package")
                (:file "conditions")
                (:file "mop")
+               (:file "enum")
                (:file "types")
                (:file "protocol")
                (:file "defschema"))

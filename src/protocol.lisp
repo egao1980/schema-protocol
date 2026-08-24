@@ -155,6 +155,99 @@
                         (loop for i from 0 below (length seq) collect i))))
           out))))
 
+(defun schema-tag (class)
+  (let ((class (schema-of class)))
+    (or (schema-class-tag class)
+        (loop for super in (class-direct-superclasses class)
+              when (schema-class-p super)
+                do (let ((tag (schema-tag super)))
+                     (when tag (return tag)))))))
+
+(defun discover-schema-subclasses (class)
+  (let ((acc '()))
+    (labels ((walk (c)
+               (dolist (child (class-direct-subclasses c))
+                 (when (schema-class-p child)
+                   (walk child)
+                   (push child acc)))))
+      (walk (finalize-schema class)))
+    (nreverse acc)))
+
+(defun schema-variants (class)
+  "Tagged variants: explicit :VARIANTS or discovered schema subclasses (deepest first)."
+  (let* ((class (schema-of class))
+         (explicit (schema-class-variants class)))
+    (if explicit
+        (mapcar #'find-schema explicit)
+        (discover-schema-subclasses class))))
+
+(defun variant-tag-values (variant tag-name)
+  (let ((slot (schema-slot variant tag-name)))
+    (unless slot
+      (return-from variant-tag-values nil))
+    (let ((spec (normalize-type-spec (slot-definition-type slot))))
+      (case (type-kind spec)
+        (:eql (list (second spec)))
+        (:member (type-args spec))
+        (:enum (enum-members spec))
+        (t
+         (when (slot-definition-initfunction slot)
+           (list (funcall (slot-definition-initfunction slot)))))))))
+
+(defun variant-accepts-tag-p (variant tag-name value)
+  (let ((slot (schema-slot variant tag-name)))
+    (when slot
+      (let ((spec (slot-definition-type slot)))
+        (or (schema-typep value spec)
+            (find value (variant-tag-values variant tag-name) :test #'tag-matches-p))))))
+
+(defun schema-variant (schema tag-value)
+  (let* ((class (schema-of schema))
+         (tag (schema-tag class)))
+    (and tag
+         (find-if (lambda (v) (variant-accepts-tag-p v tag tag-value))
+                  (schema-variants class)))))
+
+(defun canonicalize-tag (value spec)
+  (let ((spec (normalize-type-spec spec)))
+    (case (type-kind spec)
+    (:enum (or (enum-canonical spec value) value))
+    (:member (or (member-canonical spec value) value))
+    (:eql (if (tag-matches-p (second spec) value) (second spec) value))
+    (:keyword
+     (cond
+       ((keywordp value) value)
+       ((stringp value) (intern (string-upcase value) :keyword))
+       ((symbolp value) (intern (symbol-name value) :keyword))
+       (t value)))
+    (t value))))
+
+(defun resolve-tagged-class (class table)
+  (let ((tag-name (schema-tag class)))
+    (unless tag-name
+      (return-from resolve-tagged-class (values class nil)))
+    (let ((variants (schema-variants class)))
+      (unless variants
+        (return-from resolve-tagged-class (values class nil)))
+      (let ((slot (schema-slot class tag-name)))
+        (unless slot
+          (error 'schema-error
+                 :message (format nil "tag slot ~S missing on ~S" tag-name (class-name class))))
+        (multiple-value-bind (raw found) (lookup-field slot table class)
+          (unless found
+            (record-issue (list (slot-wire-key slot class)) "missing tag"
+                          :slot tag-name)
+            (return-from resolve-tagged-class (values nil t)))
+          (let ((canonical (canonicalize-tag raw (slot-definition-type slot))))
+            (let ((matched (find-if (lambda (v)
+                                      (variant-accepts-tag-p v tag-name canonical))
+                                    variants)))
+              (unless matched
+                (record-issue (list (slot-wire-key slot class)) "unknown tag"
+                              :value raw :slot tag-name)
+                (return-from resolve-tagged-class (values nil t)))
+              (values matched nil))))))))
+
 (defun parse-nested (spec value path &key coerce extra)
   (cond
     ((json-null-p value)
@@ -167,31 +260,86 @@
      (let ((*schema-path* (append *schema-path* (normalize-path path))))
        (parse spec value :coerce coerce :extra extra)))))
 
+(defun %enum-conjunct (spec)
+  (cond
+    ((eq (type-kind spec) :enum) spec)
+    ((and (consp spec) (eq (first spec) 'and))
+     (find-if (lambda (s) (eq (type-kind s) :enum)) (rest spec)))
+    (t nil)))
+
+(defun inherited-enum-type (class slot-name)
+  "Direct slot type on CLASS or a schema superclass that is an enum."
+  (labels ((walk (c)
+             (let ((d (find slot-name (class-direct-slots c)
+                            :key #'slot-definition-name)))
+               (when (and d (eq (type-kind (slot-definition-type d)) :enum))
+                 (return-from inherited-enum-type (slot-definition-type d))))
+             (dolist (s (class-direct-superclasses c))
+               (when (schema-class-p s)
+                 (walk s)))))
+    (when (and class slot-name)
+      (walk (schema-of class)))
+    nil))
+
 (defun parse-value (spec value schema slot path &key coerce)
-  (let ((kind (type-kind spec)))
+  (let* ((enum-part (or (%enum-conjunct spec)
+                        (and schema slot
+                             (inherited-enum-type schema
+                                                  (slot-definition-name slot)))))
+         (spec (normalize-type-spec spec))
+         (kind (type-kind spec)))
+    (when enum-part
+      (let ((canon (enum-canonical enum-part value)))
+        (when canon (setf value canon))))
     (when (and coerce (member kind '(:integer :number :real :float :string :boolean :keyword
                                      :vector :list)))
       (multiple-value-bind (coerced ok) (coerce-scalar spec value)
         (when ok (setf value coerced))))
     (case kind
-      (:or (parse-or spec value schema slot path :coerce coerce))
+      (:or (return-from parse-value
+             (parse-or spec value schema slot path :coerce coerce)))
       ((:vector :list :sequence)
-       (parse-seq spec value schema slot path :coerce coerce))
+       (return-from parse-value
+         (parse-seq spec value schema slot path :coerce coerce)))
       (:nested
-       (parse-nested spec value path :coerce coerce))
-      (t
-       (unless (schema-typep value spec)
+       (return-from parse-value
+         (parse-nested spec value path :coerce coerce)))
+      (:enum
+       (let ((canon (enum-canonical spec value)))
+         (unless canon
+           (record-issue path (format nil "expected ~S" spec)
+                         :value value
+                         :slot (and slot (slot-definition-name slot)))
+           (return-from parse-value value))
+         (setf value canon)))
+      (:member
+       (let ((canon (member-canonical spec value)))
+         (unless canon
+           (record-issue path (format nil "expected ~S" spec)
+                         :value value
+                         :slot (and slot (slot-definition-name slot)))
+           (return-from parse-value value))
+         (setf value canon)))
+      (:eql
+       (unless (tag-matches-p (second spec) value)
          (record-issue path (format nil "expected ~S" spec)
                        :value value
                        :slot (and slot (slot-definition-name slot)))
          (return-from parse-value value))
-       (when slot
-         (dolist (msg (check-constraints slot value))
-           (record-issue path msg :value value :slot (slot-definition-name slot)))
-         (validate-field (class-name (schema-of schema))
-                         (slot-definition-name slot)
-                         value))
-       value))))
+       (setf value (second spec))))
+    (when (and (not (member kind '(:or :vector :list :sequence :nested :enum :member :eql)))
+               (not (schema-typep value spec)))
+      (record-issue path (format nil "expected ~S" spec)
+                    :value value
+                    :slot (and slot (slot-definition-name slot)))
+      (return-from parse-value value))
+    (when (and slot (not (member kind '(:or :vector :list :sequence :nested))))
+      (dolist (msg (check-constraints slot value))
+        (record-issue path msg :value value :slot (slot-definition-name slot)))
+      (validate-field (class-name (schema-of schema))
+                      (slot-definition-name slot)
+                      value))
+    value))
 
 (defun %maybe-decode (source format)
   (if (null format)
@@ -217,6 +365,15 @@
          (initargs '())
          (extras (make-hash-table :test #'equal)))
     (finalize-schema class)
+    (multiple-value-bind (resolved tag-error)
+        (resolve-tagged-class class table)
+      (when tag-error
+        (return-from %parse-object (make-instance class)))
+      (when (and resolved (not (eq resolved class)))
+        (return-from %parse-object
+          (%parse-object resolved source :coerce coerce :extra extra)))
+      (when resolved
+        (setf class resolved)))
     (dolist (slot (schema-slots class))
       (when (slot-wire-p slot)
         (let* ((name (slot-definition-name slot))

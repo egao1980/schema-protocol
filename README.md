@@ -36,6 +36,25 @@ Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-proto
   (stack-schema:dump u))
 ```
 
+Discriminated unions are CLOS subclasses plus a `:tag` slot. Enums carry proto-style aliases (name / `TYPE_MEMBER` / number / `allow_alias`).
+
+```lisp
+(stack-schema:defenum color
+  (:red 1)
+  (:blue 2)
+  (:azure 2))                       ; proto allow_alias — 2 stays :blue
+
+(stack-schema:defschema shape ()
+  (kind color)
+  (:tag kind))
+
+(stack-schema:defschema circ (shape)
+  (kind (eql :red) :default :red)
+  (r number))
+
+(stack-schema:parse 'shape '(:kind "COLOR_RED" :r 1.5))  ; => circ
+```
+
 ## Prior art — take / leave
 
 Pydantic is the *feature checklist* (nested models, validators, computed fields, JSON Schema). It is **not** the API.
@@ -68,6 +87,8 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defgeneric validate-object (object))          ; :after methods
 (defgeneric validate-field (schema-name slot-name value))
 (defgeneric coerce-field (schema-name slot-name value))
+
+(defmacro defenum (name &body members))
 ```
 
 `:format` decodes/encodes via `serdes-protocol` when that system is loaded. Default `dump` / `parse` speak hash-tables, plists, alists.
@@ -75,7 +96,6 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 ## Non-goals (0.1.0)
 
 - JSON Schema parse / generate (→ `schema-protocol-json`; later `schema-protocol-xsd`, …)
-- Discriminated unions
 - Settings/env overlay (stay on `cl-stack-config`)
 - ORM / persistence
 - Aggressive implicit coercion

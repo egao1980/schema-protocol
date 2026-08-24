@@ -3,6 +3,9 @@
   (:nicknames #:stack-schema)
   (:import-from #:closer-mop
                 #:class-slots
+                #:class-direct-subclasses
+                #:class-direct-superclasses
+                #:class-direct-slots
                 #:slot-definition-name
                 #:slot-definition-type
                 #:slot-definition-initargs
@@ -24,6 +27,12 @@
    #:schema-class-extra
    #:schema-class-key-style
    #:schema-class-computes
+   #:schema-class-tag
+   #:schema-class-variants
+   #:schema-tag
+   #:schema-variants
+   #:schema-variant
+   #:variant-tag-values
    #:schema-extras
    #:schema-of
    #:find-schema
@@ -33,6 +42,7 @@
    #:finalize-schema
    #:type-kind
    #:type-args
+   #:normalize-type-spec
    #:sequence-element-type
    #:nested-schema-type-p
    #:slot-is-required-p
@@ -54,6 +64,17 @@
 
    ;; definition
    #:defschema
+   #:defenum
+   #:find-enum
+   #:schema-enum
+   #:schema-enum-p
+   #:enum-of
+   #:enum-members
+   #:enum-canonical
+   #:enum-number
+   #:proto-enum-alias
+   #:member-canonical
+   #:tag-matches-p
 
    ;; protocol
    #:validate

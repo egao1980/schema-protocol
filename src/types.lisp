@@ -15,16 +15,31 @@
 (defun %type-args (spec)
   (if (consp spec) (rest spec) nil))
 
+(defun normalize-type-spec (spec)
+  "SBCL intersects inherited slot types: (and (member :click) event-kind).
+   Prefer the most specific conjunct we understand."
+  (if (and (consp spec) (eq (first spec) 'and))
+      (let ((parts (rest spec)))
+        (or (find-if (lambda (s) (and (consp s) (eq (first s) 'eql))) parts)
+            (find-if (lambda (s) (and (consp s) (eq (first s) 'member))) parts)
+            (find-if (lambda (s)
+                       (or (and (symbolp s) (enum-of s))
+                           (and (consp s) (eq (first s) 'enum))))
+                     parts)
+            spec))
+      spec))
+
 (defun type-args (spec)
   "Components of a compound schema type specifier."
-  (%type-args spec))
+  (%type-args (normalize-type-spec spec)))
 
 (defun nested-schema-type-p (spec)
   (let ((name (if (consp spec) nil spec)))
     (and (symbolp name) (schema-name-p name))))
 
 (defun type-kind (spec)
-  (let ((head (%type-head spec)))
+  (let* ((spec (normalize-type-spec spec))
+         (head (%type-head spec)))
     (cond
       ((member head '(t :any)) :any)
       ((member head '(:null null)) :null)
@@ -44,6 +59,8 @@
       ((eq head 'list) :list)
       ((eq head 'sequence) :sequence)
       ((eq head 'satisfies) :satisfies)
+      ((eq head 'enum) :enum)
+      ((and (symbolp head) (enum-of head)) :enum)
       ((and (symbolp head) (schema-name-p head)) :nested)
       (t :lisp))))
 
@@ -133,7 +150,8 @@
 
 (defun lisp-type-for (spec)
   "Best-effort CL type for TYPEP of non-nested scalars."
-  (let ((kind (type-kind spec)))
+  (let* ((spec (normalize-type-spec spec))
+         (kind (type-kind spec)))
     (case kind
       (:any t)
       (:null '(eql :null))
@@ -147,13 +165,15 @@
       (:symbol 'symbol)
       (:hash-table 'hash-table)
       (:member spec)
+      (:enum 'keyword)
       (:eql spec)
       (:satisfies spec)
       (:lisp spec)
       (t t))))
 
 (defun schema-typep (value spec)
-  (let ((kind (type-kind spec)))
+  (let* ((spec (normalize-type-spec spec))
+         (kind (type-kind spec)))
     (ecase kind
       (:any t)
       (:null (json-null-p value))
@@ -166,8 +186,10 @@
       (:keyword (keywordp value))
       (:symbol (symbolp value))
       (:hash-table (hash-table-p value))
-      (:member (typep value spec))
-      (:eql (typep value spec))
+      (:member (not (null (member-canonical spec value))))
+      (:enum (not (null (enum-canonical spec value))))
+      (:eql (or (typep value spec)
+                (tag-matches-p (second spec) value)))
       (:satisfies (typep value spec))
       (:lisp (typep value spec))
       (:or (some (lambda (s) (schema-typep value s)) (%type-args spec)))
@@ -181,7 +203,8 @@
 
 (defun coerce-scalar (spec value)
   "Return (values new-value t) or (values value nil)."
-  (let ((kind (type-kind spec)))
+  (let* ((spec (normalize-type-spec spec))
+         (kind (type-kind spec)))
     (cond
       ((schema-typep value spec) (values value t))
       ((eq kind :integer)
@@ -221,6 +244,16 @@
          ((and (symbolp value) (not (keywordp value)))
           (values (intern (symbol-name value) :keyword) t))
          (t (values value nil))))
+      ((eq kind :member)
+       (let ((canon (member-canonical spec value)))
+         (if canon (values canon t) (values value nil))))
+      ((eq kind :enum)
+       (let ((canon (enum-canonical spec value)))
+         (if canon (values canon t) (values value nil))))
+      ((eq kind :eql)
+       (if (tag-matches-p (second spec) value)
+           (values (second spec) t)
+           (values value nil)))
       ((eq kind :vector)
        (if (listp value)
            (values (coerce value 'vector) t)
@@ -230,6 +263,27 @@
            (values (coerce value 'list) t)
            (values value nil)))
       (t (values value nil)))))
+
+(defun member-canonical (spec value)
+  "VALUE → the matching MEMBER element, or NIL. Keywords accept any-case names."
+  (let ((members (type-args spec)))
+    (cond
+      ((member value members :test #'eql) value)
+      ((or (stringp value) (symbolp value))
+       (find value members :test #'string-equal))
+      (t nil))))
+
+(defun tag-matches-p (expected got)
+  (or (eql expected got)
+      (equal expected got)
+      (and (symbolp expected) (symbolp got)
+           (string-equal (symbol-name expected) (symbol-name got)))
+      (and (symbolp expected) (stringp got)
+           (string-equal (symbol-name expected) got))
+      (and (stringp expected) (stringp got)
+           (string-equal expected got))
+      (and (stringp expected) (symbolp got)
+           (string-equal expected (symbol-name got)))))
 
 (defun sequence-element-type (spec slot)
   (or (and slot (slot-element-type slot))
