@@ -1,0 +1,76 @@
+(defpackage #:schema-protocol
+  (:use #:cl)
+  (:nicknames #:stack-schema)
+  (:import-from #:closer-mop
+                #:class-slots
+                #:slot-definition-name
+                #:slot-definition-type
+                #:slot-definition-initargs
+                #:slot-definition-initform
+                #:slot-definition-initfunction
+                #:class-finalized-p
+                #:finalize-inheritance
+                #:validate-superclass
+                #:direct-slot-definition-class
+                #:effective-slot-definition-class
+                #:compute-effective-slot-definition
+                #:standard-direct-slot-definition
+                #:standard-effective-slot-definition)
+  (:export
+   ;; metaclass / objects
+   #:schema-class
+   #:schema-object
+   #:schema-class-p
+   #:schema-class-extra
+   #:schema-class-key-style
+   #:schema-class-computes
+   #:schema-extras
+   #:schema-of
+   #:find-schema
+   #:list-schemas
+   #:schema-slots
+   #:schema-slot
+   #:slot-required-p
+   #:slot-optional-p
+   #:slot-wire-p
+   #:slot-dump-p
+   #:slot-wire-key
+   #:slot-aliases
+   #:slot-format
+   #:slot-pattern
+   #:slot-min-length
+   #:slot-max-length
+   #:slot-minimum
+   #:slot-maximum
+   #:slot-description
+   #:slot-element-type
+
+   ;; definition
+   #:defschema
+
+   ;; protocol
+   #:validate
+   #:validp
+   #:parse
+   #:dump
+   #:json-schema
+   #:validate-object
+   #:validate-field
+   #:coerce-field
+   #:schema-issue
+   #:schema-fail
+
+   ;; conditions
+   #:schema-error
+   #:schema-error-message
+   #:schema-validation-error
+   #:schema-validation-error-issues
+   #:schema-unknown
+   #:schema-unknown-name
+   #:schema-issue-path
+   #:schema-issue-message
+   #:schema-issue-value
+   #:schema-issue-slot
+   #:make-schema-issue))
+
+(in-package #:schema-protocol)
