@@ -4,6 +4,7 @@
   :author "egao1980"
   :license "MIT"
   :depends-on ("closer-mop")
+  :properties (:cl-repo (:ci (:sources (("closer-mop" :ql) ("rove" :ql)))))
   :serial t
   :pathname "src"
   :components ((:file "package")
