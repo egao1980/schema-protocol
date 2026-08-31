@@ -83,6 +83,7 @@
    #:parse
    #:dump
    #:json-schema
+   #:xsd-schema
    #:validate-object
    #:validate-field
    #:coerce-field
