@@ -566,3 +566,11 @@
     (declare (ignore schema version))
     (error 'schema-error
            :message "load schema-protocol-xsd to emit or parse XSD")))
+
+(defgeneric arrow-schema (schema &key)
+  (:documentation "Emit an arrow-protocol:arrow-schema.
+   Implemented by schema-protocol-arrow — not in this system.")
+  (:method (schema &key)
+    (declare (ignore schema))
+    (error 'schema-error
+           :message "load schema-protocol-arrow to emit an Arrow schema")))
