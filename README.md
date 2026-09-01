@@ -86,7 +86,7 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defgeneric parse (schema source &key coerce extra format))
 (defgeneric dump (object &key as include-computed format))
 (defgeneric json-schema (schema &key draft))   ; method in schema-protocol-json
-(defgeneric xsd-schema (schema &key version))  ; method in schema-protocol-xsd
+(defgeneric xsd-schema (schema &key version))  ; method in schema-protocol-xsd (:1.0 / :1.1)
 (defgeneric validate-object (object))          ; :after methods
 (defgeneric validate-field (schema-name slot-name value))
 (defgeneric coerce-field (schema-name slot-name value))

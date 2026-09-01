@@ -560,7 +560,7 @@
            :message "load schema-protocol-json to emit or parse JSON Schema")))
 
 (defgeneric xsd-schema (schema &key version)
-  (:documentation "Emit an XSD 1.0 document (XML string).
+  (:documentation "Emit an XSD 1.0 or 1.1 document (XML string).
    Implemented by schema-protocol-xsd — not in this system.")
   (:method (schema &key version)
     (declare (ignore schema version))
