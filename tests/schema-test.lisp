@@ -272,3 +272,7 @@
   (ok (parse '%fv-1 (%ht "email" "a@b.c")))
   (ok (signals (parse '%fv-1 (%ht "email" "nope"))
                'schema-validation-error)))
+
+(deftest format-backends-are-optional
+  (ok (signals (json-schema 'schema-object) 'schema-error))
+  (ok (signals (xsd-schema 'schema-object) 'schema-error)))
