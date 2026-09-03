@@ -84,6 +84,7 @@
    #:dump
    #:json-schema
    #:xsd-schema
+   #:arrow-schema
    #:validate-object
    #:validate-field
    #:coerce-field

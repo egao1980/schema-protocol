@@ -275,4 +275,5 @@
 
 (deftest format-backends-are-optional
   (ok (signals (json-schema 'schema-object) 'schema-error))
-  (ok (signals (xsd-schema 'schema-object) 'schema-error)))
+  (ok (signals (xsd-schema 'schema-object) 'schema-error))
+  (ok (signals (arrow-schema 'schema-object) 'schema-error)))

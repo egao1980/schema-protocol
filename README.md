@@ -6,7 +6,7 @@ JSON Schema parse/emit lives in [`schema-protocol-json`](https://github.com/egao
 
 | System | Role | OCI |
 |--------|------|-----|
-| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.1.1** |
+| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.1.2** |
 
 Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-protocol) / [`json-protocol`](https://github.com/egao1980/json-protocol). This package owns **shape + constraints**, not bytes.
 
@@ -87,6 +87,7 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defgeneric dump (object &key as include-computed format))
 (defgeneric json-schema (schema &key draft))   ; method in schema-protocol-json
 (defgeneric xsd-schema (schema &key version))  ; method in schema-protocol-xsd (:1.0 / :1.1)
+(defgeneric arrow-schema (schema &key))        ; method in schema-protocol-arrow
 (defgeneric validate-object (object))          ; :after methods
 (defgeneric validate-field (schema-name slot-name value))
 (defgeneric coerce-field (schema-name slot-name value))

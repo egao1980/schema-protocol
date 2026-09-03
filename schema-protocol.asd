@@ -1,5 +1,5 @@
 (defsystem "schema-protocol"
-  :version "0.1.1"
+  :version "0.1.2"
   :description "CLOS schema protocol for cl-stack — interchange models, validation, nested schemas"
   :author "egao1980"
   :license "MIT"
