@@ -85,6 +85,7 @@
    #:json-schema
    #:xsd-schema
    #:arrow-schema
+   #:avro-schema
    #:validate-object
    #:validate-field
    #:coerce-field

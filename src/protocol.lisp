@@ -574,3 +574,11 @@
     (declare (ignore schema))
     (error 'schema-error
            :message "load schema-protocol-arrow to emit an Arrow schema")))
+
+(defgeneric avro-schema (schema &key)
+  (:documentation "Emit an Avro schema (hash-table or named type).
+   Implemented by schema-protocol-avro — not in this system.")
+  (:method (schema &key)
+    (declare (ignore schema))
+    (error 'schema-error
+           :message "load schema-protocol-avro to emit an Avro schema")))
