@@ -82,6 +82,16 @@
    #:validp
    #:parse
    #:dump
+   #:*schema-format*
+   #:*schema-backend*
+   #:*schema-formats*
+   #:schema-format-backend
+   #:register-schema-format
+   #:find-schema-backend
+   #:backend-emit-schema
+   #:backend-parse-schema
+   #:emit-schema
+   #:parse-schema
    #:json-schema
    #:xsd-schema
    #:arrow-schema
@@ -99,6 +109,8 @@
    #:schema-validation-error-issues
    #:schema-unknown
    #:schema-unknown-name
+   #:schema-unknown-format
+   #:schema-unknown-format-format
    #:schema-issue-path
    #:schema-issue-message
    #:schema-issue-value

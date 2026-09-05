@@ -35,3 +35,11 @@
              (format s "Unknown schema ~S~@[: ~A~]"
                      (schema-unknown-name c)
                      (schema-error-message c)))))
+
+(define-condition schema-unknown-format (schema-error)
+  ((format :initarg :format :reader schema-unknown-format-format))
+  (:report (lambda (c s)
+             (format s "Unknown schema format ~S~@[: ~A~]"
+                     (schema-unknown-format-format c)
+                     (schema-error-message c)))))
+

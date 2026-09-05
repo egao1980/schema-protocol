@@ -552,33 +552,21 @@
           shaped))))
 
 (defgeneric json-schema (schema &key draft)
-  (:documentation "Emit a JSON Schema document (hash-table).
-   Implemented by schema-protocol-json — not in this system.")
-  (:method (schema &key draft)
-    (declare (ignore schema draft))
-    (error 'schema-error
-           :message "load schema-protocol-json to emit or parse JSON Schema")))
+  (:documentation "Emit a JSON Schema document. Wrapper for (EMIT-SCHEMA SCHEMA :FORMAT :JSON).")
+  (:method (schema &key (draft :draft-07))
+    (emit-schema schema :format :json :draft draft)))
 
 (defgeneric xsd-schema (schema &key version)
-  (:documentation "Emit an XSD 1.0 or 1.1 document (XML string).
-   Implemented by schema-protocol-xsd — not in this system.")
-  (:method (schema &key version)
-    (declare (ignore schema version))
-    (error 'schema-error
-           :message "load schema-protocol-xsd to emit or parse XSD")))
+  (:documentation "Emit an XSD document. Wrapper for (EMIT-SCHEMA SCHEMA :FORMAT :XSD).")
+  (:method (schema &key (version :1.0))
+    (emit-schema schema :format :xsd :version version)))
 
 (defgeneric arrow-schema (schema &key)
-  (:documentation "Emit an arrow-protocol:arrow-schema.
-   Implemented by schema-protocol-arrow — not in this system.")
+  (:documentation "Emit an Arrow schema. Wrapper for (EMIT-SCHEMA SCHEMA :FORMAT :ARROW).")
   (:method (schema &key)
-    (declare (ignore schema))
-    (error 'schema-error
-           :message "load schema-protocol-arrow to emit an Arrow schema")))
+    (emit-schema schema :format :arrow)))
 
 (defgeneric avro-schema (schema &key)
-  (:documentation "Emit an Avro schema (hash-table or named type).
-   Implemented by schema-protocol-avro — not in this system.")
+  (:documentation "Emit an Avro schema. Wrapper for (EMIT-SCHEMA SCHEMA :FORMAT :AVRO).")
   (:method (schema &key)
-    (declare (ignore schema))
-    (error 'schema-error
-           :message "load schema-protocol-avro to emit an Avro schema")))
+    (emit-schema schema :format :avro)))
