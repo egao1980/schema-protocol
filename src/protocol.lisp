@@ -570,3 +570,8 @@
   (:documentation "Emit an Avro schema. Wrapper for (EMIT-SCHEMA SCHEMA :FORMAT :AVRO).")
   (:method (schema &key)
     (emit-schema schema :format :avro)))
+
+(defgeneric toml-schema (schema &key version)
+  (:documentation "Emit a TOML Schema (.tosd) document. Wrapper for (EMIT-SCHEMA SCHEMA :FORMAT :TOML).")
+  (:method (schema &key (version "1.0.0"))
+    (emit-schema schema :format :toml :version version)))

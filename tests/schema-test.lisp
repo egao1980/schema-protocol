@@ -278,6 +278,7 @@
   (ok (signals (xsd-schema 'schema-object) 'schema-error))
   (ok (signals (arrow-schema 'schema-object) 'schema-error))
   (ok (signals (avro-schema 'schema-object) 'schema-error))
+  (ok (signals (toml-schema 'schema-object) 'schema-error))
   (ok (signals (emit-schema 'schema-object :format :json) 'schema-unknown-format))
   (ok (signals (parse-schema nil :format :json) 'schema-unknown-format))
   (ok (null (find-schema-backend :json nil)))

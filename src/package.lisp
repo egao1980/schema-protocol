@@ -96,6 +96,7 @@
    #:xsd-schema
    #:arrow-schema
    #:avro-schema
+   #:toml-schema
    #:validate-object
    #:validate-field
    #:coerce-field

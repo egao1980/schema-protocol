@@ -2,11 +2,11 @@
 
 CLOS **interchange schema** protocol for [cl-stack](https://github.com/egao1980/cl-stack) — models, validation, nested schemas, computed fields.
 
-JSON Schema parse/emit lives in [`schema-protocol-json`](https://github.com/egao1980/schema-protocol-json) (`stack-schema-json`). XSD is [`schema-protocol-xsd`](https://github.com/egao1980/schema-protocol-xsd) (`stack-schema-xsd`).
+JSON Schema parse/emit lives in [`schema-protocol-json`](https://github.com/egao1980/schema-protocol-json) (`stack-schema-json`). XSD is [`schema-protocol-xsd`](https://github.com/egao1980/schema-protocol-xsd) (`stack-schema-xsd`). TOML Schema (`.tosd`) is `schema-protocol-toml` (`stack-schema-toml`) in the [`json-protocol`](https://github.com/egao1980/json-protocol) repo, next to `toml-protocol`.
 
 | System | Role | OCI |
 |--------|------|-----|
-| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.2.0** |
+| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.2.1** |
 
 Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-protocol) / [`json-protocol`](https://github.com/egao1980/json-protocol). This package owns **shape + constraints**, not bytes.
 
@@ -85,12 +85,13 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defgeneric validate (schema value &key coerce extra format))
 (defgeneric parse (schema source &key coerce extra format))
 (defgeneric dump (object &key as include-computed format))
-(defun emit-schema (schema &key format …))     ; JSON Schema / XSD / Arrow / Avro
+(defun emit-schema (schema &key format …))     ; JSON Schema / XSD / Arrow / Avro / TOSD
 (defun parse-schema (source &key format …))    ; document → schema-class
 (defgeneric json-schema (schema &key draft))   ; (emit-schema schema :format :json)
 (defgeneric xsd-schema (schema &key version))  ; (emit-schema schema :format :xsd)
 (defgeneric arrow-schema (schema &key))        ; (emit-schema schema :format :arrow)
 (defgeneric avro-schema (schema &key))         ; (emit-schema schema :format :avro)
+(defgeneric toml-schema (schema &key version)) ; (emit-schema schema :format :toml)
 (defgeneric validate-object (object))          ; :after methods
 (defgeneric validate-field (schema-name slot-name value))
 (defgeneric coerce-field (schema-name slot-name value))
@@ -100,12 +101,13 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 
 `parse` / `dump` `:format` decodes/encodes **instance** values via `serdes-protocol` when that system is loaded. Default `dump` / `parse` speak hash-tables, plists, alists.
 
-`emit-schema` / `parse-schema` `:format` is the **schema document** kind (`:json`, `:xsd`, `:arrow`, `:avro`). Implementors register with `register-schema-format`. Unknown format → `schema-unknown-format`. Default `*schema-format*` is `:json`.
+`emit-schema` / `parse-schema` `:format` is the **schema document** kind (`:json`, `:xsd`, `:arrow`, `:avro`, `:toml`). Implementors register with `register-schema-format`. Unknown format → `schema-unknown-format`. Default `*schema-format*` is `:json`.
 
 ## Non-goals (0.1.0)
 
 - JSON Schema parse / generate (→ `schema-protocol-json`)
 - XSD parse / generate (→ `schema-protocol-xsd`)
+- TOML Schema / `.tosd` (→ `schema-protocol-toml`)
 - Settings/env overlay (stay on `cl-stack-config`)
 - ORM / persistence
 - Aggressive implicit coercion
