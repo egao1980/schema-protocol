@@ -6,7 +6,7 @@ JSON Schema parse/emit lives in [`schema-protocol-json`](https://github.com/egao
 
 | System | Role | OCI |
 |--------|------|-----|
-| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.1.3** |
+| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.2.0** |
 
 Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-protocol) / [`json-protocol`](https://github.com/egao1980/json-protocol). This package owns **shape + constraints**, not bytes.
 
@@ -85,10 +85,12 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defgeneric validate (schema value &key coerce extra format))
 (defgeneric parse (schema source &key coerce extra format))
 (defgeneric dump (object &key as include-computed format))
-(defgeneric json-schema (schema &key draft))   ; method in schema-protocol-json
-(defgeneric xsd-schema (schema &key version))  ; method in schema-protocol-xsd (:1.0 / :1.1)
-(defgeneric arrow-schema (schema &key))        ; method in schema-protocol-arrow
-(defgeneric avro-schema (schema &key))         ; method in schema-protocol-avro
+(defun emit-schema (schema &key format …))     ; JSON Schema / XSD / Arrow / Avro
+(defun parse-schema (source &key format …))    ; document → schema-class
+(defgeneric json-schema (schema &key draft))   ; (emit-schema schema :format :json)
+(defgeneric xsd-schema (schema &key version))  ; (emit-schema schema :format :xsd)
+(defgeneric arrow-schema (schema &key))        ; (emit-schema schema :format :arrow)
+(defgeneric avro-schema (schema &key))         ; (emit-schema schema :format :avro)
 (defgeneric validate-object (object))          ; :after methods
 (defgeneric validate-field (schema-name slot-name value))
 (defgeneric coerce-field (schema-name slot-name value))
@@ -96,7 +98,9 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 (defmacro defenum (name &body members))
 ```
 
-`:format` decodes/encodes via `serdes-protocol` when that system is loaded. Default `dump` / `parse` speak hash-tables, plists, alists.
+`parse` / `dump` `:format` decodes/encodes **instance** values via `serdes-protocol` when that system is loaded. Default `dump` / `parse` speak hash-tables, plists, alists.
+
+`emit-schema` / `parse-schema` `:format` is the **schema document** kind (`:json`, `:xsd`, `:arrow`, `:avro`). Implementors register with `register-schema-format`. Unknown format → `schema-unknown-format`. Default `*schema-format*` is `:json`.
 
 ## Non-goals (0.1.0)
 
