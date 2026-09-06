@@ -98,7 +98,7 @@ Slot forms: (name type &key required optional default initform initarg accessor
 TYPE is a Lisp type specifier or nested schema class name.
 Options:
   (:extra :forbid|:ignore|:allow)  — inherited; leftover keys in SCHEMA-EXTRAS (:allow)
-  (:key-style :downcase|:kebab|:snake|:camel|:preserve)
+  (:key-style :downcase|:kebab|:snake|:camel|:preserve) — inherited; default :downcase
   (:tag slot-name &optional variant*) — discriminator; subclasses (or VARIANT*)
   (:compute name lambda-list . body)
   (:validate (self) . body)           — VALIDATE-OBJECT :after
