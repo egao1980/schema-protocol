@@ -27,6 +27,7 @@
    #:schema-class-extra
    #:schema-extra-policy
    #:schema-class-key-style
+   #:schema-key-style-policy
    #:schema-class-computes
    #:schema-class-tag
    #:schema-class-variants

@@ -37,13 +37,14 @@
 
 (defclass schema-class (standard-class)
   ((extra :initarg :extra :initform nil :accessor schema-class-extra)
-   (key-style :initarg :key-style :initform :downcase :accessor schema-class-key-style)
+   (key-style :initarg :key-style :initform nil :accessor schema-class-key-style)
    (computes :initarg :computes :initform nil :accessor schema-class-computes)
    (tag :initarg :tag :initform nil :accessor schema-class-tag)
    (variants :initarg :variants :initform nil :accessor schema-class-variants))
   (:documentation "Metaclass for interchange schemas. Slot options carry wire metadata.
    :TAG names the discriminator slot; subclasses (or :VARIANTS) are the union.
-   :EXTRA is inherited; NIL means take the parent policy, else default :FORBID."))
+   :EXTRA is inherited; NIL means take the parent policy, else default :FORBID.
+   :KEY-STYLE is inherited the same way; NIL means take the parent, else :DOWNCASE."))
 
 (defmethod validate-superclass ((class schema-class) (super standard-class))
   t)
@@ -190,6 +191,19 @@
                                 (when p (return p))))))))
     (or (walk (schema-of schema)) :forbid)))
 
+(defun schema-key-style-policy (schema)
+  "Resolved :KEY-STYLE: :DOWNCASE (default), :KEBAB, :SNAKE, :CAMEL, or :PRESERVE.
+   Walks schema superclasses when the class did not set :KEY-STYLE."
+  (labels ((walk (class)
+             (let ((raw (%class-option (schema-class-key-style class))))
+               (if raw
+                   raw
+                   (loop for super in (class-direct-superclasses class)
+                         when (schema-class-p super)
+                           do (let ((p (walk super)))
+                                (when p (return p))))))))
+    (or (walk (schema-of schema)) :downcase)))
+
 (defun extras-table (value)
   "Hash-table / alist / plist → equal hash-table with string keys. NIL → empty table."
   (cond
@@ -299,4 +313,4 @@
 (defun slot-wire-key (slot schema)
   (or (%slot-key slot)
       (style-key (slot-definition-name slot)
-                 (%class-option (schema-class-key-style (schema-of schema))))))
+                 (schema-key-style-policy schema))))

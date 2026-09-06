@@ -6,7 +6,7 @@ JSON Schema parse/emit lives in [`schema-protocol-json`](https://github.com/egao
 
 | System | Role | OCI |
 |--------|------|-----|
-| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.2.0** |
+| `schema-protocol` (`stack-schema`) | Metaclass + `defschema` + parse/validate/dump | **0.2.1** |
 
 Wire codecs stay in [`serdes-protocol`](https://github.com/egao1980/serdes-protocol) / [`json-protocol`](https://github.com/egao1980/json-protocol). This package owns **shape + constraints**, not bytes.
 
@@ -77,6 +77,8 @@ Pydantic is the *feature checklist* (nested models, validators, computed fields,
 **Pattern** is a function designator, not a regex string.
 
 **Extras** (`:extra :allow`, inherited): leftover keys live in `schema-extras` as an equal hash-table (or `:as :alist`). Same bag is merged back on `dump`. `:ignore` drops them; `:forbid` (default) errors. `make-instance` leftover initargs go in the bag. Slot `:aliases` are consumed and never leak into extras.
+
+**`:key-style`** (`:downcase` default, also `:kebab` `:snake` `:camel` `:preserve`) is inherited the same way as `:extra`. A child that omits `:key-style` uses the parent policy (`schema-key-style-policy`). Explicit child `:key-style` still wins.
 
 ## Protocol
 

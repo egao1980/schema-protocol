@@ -510,7 +510,7 @@
     (t value)))
 
 (defun compute-field-key (name schema)
-  (style-key name (schema-class-key-style schema)))
+  (style-key name (schema-key-style-policy schema)))
 
 (defun dump (object &key (as :hash-table) (include-computed t) format)
   "Instance → hash-table (default), :plist, or :alist. :FORMAT encodes via serdes."
