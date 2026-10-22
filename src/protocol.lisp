@@ -254,7 +254,7 @@
      (record-issue path (format nil "expected ~S, got null" spec) :value value)
      value)
     ((and (symbolp spec) (typep value spec))
-     (validate value)
+     (validate spec value)
      value)
     (t
      (let ((*schema-path* (append *schema-path* (normalize-path path))))
@@ -426,7 +426,7 @@
   (let ((source (%maybe-decode source format)))
     (when (and (typep source 'standard-object)
                (schema-class-p (class-of source)))
-      (validate source)
+      (validate schema source)
       (return-from parse source))
     (flet ((body ()
              (%parse-object schema source
