@@ -271,6 +271,17 @@
     (ok (not (validp '%v-1 o)))
     (ok (signals (validate '%v-1 o) 'schema-validation-error))))
 
+(deftest parse-accepts-instances
+  (defschema %inner-1 ()
+    (n integer :minimum 0))
+  (defschema %outer-1 ()
+    (inner %inner-1))
+  (let ((o (make-instance '%inner-1 :n 1)))
+    (ok (eq o (parse '%inner-1 o)))
+    (ok (eq o (slot-value (parse '%outer-1 (%ht "inner" o)) 'inner))))
+  (ok (signals (parse '%outer-1 (%ht "inner" (make-instance '%inner-1 :n -1)))
+               'schema-validation-error)))
+
 (deftest restart-use-value
   (defschema %r-1 ()
     (name string)
